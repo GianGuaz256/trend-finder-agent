@@ -346,6 +346,95 @@ Return ONLY a JSON object with the following structure:
         }
       }
     }
+    // --- 4) Handle newsletter sources with Firecrawl ---
+    else if (sourceType === 'newsletter') {
+      if (useScrape) {
+        try {
+          console.log(`Extracting latest newsletter from ${source}...`);
+          
+          // Step 1: Extract the latest newsletter link
+          const promptForNewsletterMain = `
+Extract the URL, title, and date of the most recent newsletter from this page.
+Return ONLY a JSON object with the following structure:
+{
+  "latestNewsletter": {
+    "url": "full URL to the latest newsletter",
+    "title": "title of the latest newsletter",
+    "date": "publication date of the newsletter"
+  }
+}
+If a URL is relative, convert it to an absolute URL by prepending the base URL: ${source}
+`;
+
+          const mainPageResult = await app.extract([source], {
+            prompt: promptForNewsletterMain
+          });
+
+          if (!mainPageResult.success) {
+            throw new Error(`Failed to scrape newsletter main page: ${mainPageResult.error}`);
+          }
+
+          // Get the latest newsletter URL
+          const newsletterData = mainPageResult.data as any;
+          if (!newsletterData.latestNewsletter || !newsletterData.latestNewsletter.url) {
+            console.error(`Failed to extract latest newsletter URL from ${source}`);
+            continue;
+          }
+
+          const latestNewsletterUrl = newsletterData.latestNewsletter.url;
+          console.log(`Found latest newsletter: ${newsletterData.latestNewsletter.title} (${latestNewsletterUrl})`);
+
+          // Step 2: Extract the content from the latest newsletter
+          const promptForNewsletterContent = `
+Extract the following information from this newsletter:
+1. The title of the newsletter
+2. The date of publication
+3. A summary of the entire newsletter (250-350 words)
+4. A detailed description of the first major topic/article in the newsletter (300-500 words)
+
+Return ONLY a JSON object with the following structure:
+{
+  "stories": [
+    {
+      "headline": "Bitcoin Optech Newsletter #[NUMBER]: [TITLE]",
+      "link": "${latestNewsletterUrl}",
+      "date_posted": "publication date (YYYY-MM-DD format if possible)",
+      "content": "Detailed description of the first major topic/article"
+    }
+  ]
+}
+`;
+
+          try {
+            const newsletterResult = await app.extract([latestNewsletterUrl], {
+              prompt: promptForNewsletterContent,
+              schema: StoriesSchema,
+            });
+
+            if (!newsletterResult.success) {
+              console.error(`Failed to scrape newsletter content ${latestNewsletterUrl}: ${newsletterResult.error}`);
+              continue;
+            }
+
+            const contentData = newsletterResult.data as { stories: Story[] };
+            if (contentData.stories.length > 0) {
+              console.log(`Successfully extracted content from ${latestNewsletterUrl}`);
+              combinedText.stories.push(...contentData.stories);
+            }
+          } catch (newsletterError: any) {
+            console.error(`Error scraping newsletter content ${latestNewsletterUrl}:`, newsletterError);
+          }
+        } catch (error: any) {
+          if (error.statusCode === 429) {
+            console.error(
+              `Rate limit exceeded for ${source}. Skipping this source.`,
+            );
+          } else {
+            console.error(`Error scraping source ${source}:`, error);
+          }
+        }
+      }
+    }
   }
 
   console.log(`Combined Stories: ${combinedText.stories.length} total stories found`);

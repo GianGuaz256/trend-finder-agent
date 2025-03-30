@@ -84,21 +84,33 @@ export async function generateDraft(rawStories: string) {
     const parsedResponse = JSON.parse(rawJSON);
 
     // Construct the final post with Telegram-friendly formatting
-    const header = `🔥 Crypto & Blockchain Trends for ${currentDate}\n\n`;
+    const header = `🚀 Crypto & Blockchain Trends for ${currentDate}\n\n`;
     
     let draft_post = header;
     
     // Add each trend with its items
     parsedResponse.trends.forEach((trend: any, index: number) => {
-      draft_post += `🔹 ${trend.trendName} 🔹\n\n`;
+      // Use different emojis based on trend content
+      const trendEmoji = getTrendEmoji(trend.trendName.toLowerCase());
+      draft_post += `${trendEmoji} ${trend.trendName.toUpperCase()} ${trendEmoji}\n\n`;
       
       trend.items.forEach((item: any) => {
-        draft_post += `• [${item.category}] ${item.description}\n  ${item.story_or_tweet_link}\n\n`;
+        // Check if it's a long-form newsletter content
+        if (item.content && item.content.length > 100) {
+          // This is a newsletter article - format differently
+          draft_post += `📰 [${item.category || 'Newsletter'}] ${item.description || item.headline}\n`;
+          draft_post += `  ${item.link}\n\n`;
+          draft_post += `${item.content.substring(0, 300)}...\n\n`;
+          draft_post += `Read the full newsletter at: ${item.link}\n\n`;
+        } else {
+          // Regular news item
+          draft_post += `• [${item.category}] ${item.description}\n  ${item.story_or_tweet_link || item.link}\n\n`;
+        }
       });
       
       // Add separator between trends except after the last one
       if (index < parsedResponse.trends.length - 1) {
-        draft_post += `⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯⋯\n\n`;
+        draft_post += `⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️⚡️\n\n`;
       }
     });
 
@@ -107,4 +119,23 @@ export async function generateDraft(rawStories: string) {
     console.error("Error generating draft post", error);
     return "Error generating draft post.";
   }
+}
+
+// Helper function to get appropriate emoji for trend
+function getTrendEmoji(trendName: string): string {
+  if (trendName.includes('bitcoin')) return '₿';
+  if (trendName.includes('regulation')) return '📜';
+  if (trendName.includes('tokenization')) return '🔗';
+  if (trendName.includes('stablecoin')) return '💎';
+  if (trendName.includes('blockchain')) return '⛓️';
+  if (trendName.includes('defi')) return '🏦';
+  if (trendName.includes('nft')) return '🎨';
+  if (trendName.includes('gaming')) return '🎮';
+  if (trendName.includes('metaverse')) return '🌐';
+  if (trendName.includes('ai')) return '🤖';
+  if (trendName.includes('newsletter')) return '📰';
+  if (trendName.includes('development')) return '⚙️';
+  if (trendName.includes('security')) return '🔒';
+  if (trendName.includes('exchange')) return '💱';
+  return '📈'; // default emoji
 } 

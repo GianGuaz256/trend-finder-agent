@@ -5,7 +5,7 @@ dotenv.config();
 // Define source types
 export type Source = {
   identifier: string;
-  type: 'website' | 'twitter_user' | 'twitter_search';
+  type: 'website' | 'twitter_user' | 'twitter_search' | 'newsletter';
 };
 
 export async function getCronSources(): Promise<Source[]> {
@@ -23,7 +23,8 @@ export async function getCronSources(): Promise<Source[]> {
         ? [
             { identifier: "https://bitcoinmagazine.com/", type: 'website' as const },
             { identifier: "https://www.ledgerinsights.com/", type: 'website' as const },
-            { identifier: "https://www.theblock.co/", type: 'website' as const }
+            { identifier: "https://www.theblock.co/", type: 'website' as const },
+            { identifier: "https://bitcoinops.org/en/newsletters/", type: 'newsletter' as const }
           ] as Source[]
         : []),
       // ...(hasApifyKey && xUsernames.length > 0
